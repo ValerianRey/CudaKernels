@@ -6,3 +6,5 @@
 *.fatbin
 *.nsys-rep
 *.sqlite
+/build/
+/third_party/
