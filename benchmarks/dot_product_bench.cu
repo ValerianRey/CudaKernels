@@ -1,5 +1,6 @@
 #include "dot_product.cuh"
 #include "cuda_check.cuh"
+#include "managed_array.cuh"
 
 #include <cuda_runtime.h>
 #include <iostream>
@@ -10,21 +11,20 @@ int main(void)
 	int warmupIters = 5;
 	int timedIters = 50;
 
-	float *x, *y;
-	CUDA_CHECK(cudaMallocManaged(&x, N * sizeof(float)));
-	CUDA_CHECK(cudaMallocManaged(&y, N * sizeof(float)));
+	CudaManagedArray<float> x(N);
+	CudaManagedArray<float> y(N);
 	for (int i = 0; i < N; i++) {
 		x[i] = 3.0f;
 		y[i] = 5.0f;
 	}
-	CUDA_CHECK(cudaMemPrefetchAsync(x, N * sizeof(float), 0, 0));
-	CUDA_CHECK(cudaMemPrefetchAsync(y, N * sizeof(float), 0, 0));
+	x.prefetchToDevice(0, 0);
+	y.prefetchToDevice(0, 0);
 	CUDA_CHECK(cudaDeviceSynchronize());
 
 	// Warm up: the first launch pays for context init / JIT, and shouldn't
 	// be counted towards the measured time.
 	for (int i = 0; i < warmupIters; i++) {
-		dotProductGPU(N, x, y);
+		dotProductGPU(N, x.get(), y.get());
 	}
 
 	cudaEvent_t start, stop;
@@ -33,7 +33,7 @@ int main(void)
 
 	CUDA_CHECK(cudaEventRecord(start));
 	for (int i = 0; i < timedIters; i++) {
-		dotProductGPU(N, x, y);
+		dotProductGPU(N, x.get(), y.get());
 	}
 	CUDA_CHECK(cudaEventRecord(stop));
 	CUDA_CHECK(cudaEventSynchronize(stop));
@@ -53,8 +53,6 @@ int main(void)
 
 	CUDA_CHECK(cudaEventDestroy(start));
 	CUDA_CHECK(cudaEventDestroy(stop));
-	CUDA_CHECK(cudaFree(x));
-	CUDA_CHECK(cudaFree(y));
 
 	return 0;
 }

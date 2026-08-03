@@ -1,5 +1,5 @@
 #include "dot_product.cuh"
-#include "cuda_check.cuh"
+#include "managed_array.cuh"
 
 #include <gtest/gtest.h>
 #include <cuda_runtime.h>
@@ -16,14 +16,6 @@ float dotProductCPU(int N, const float *x, const float *y)
 		result += x[i] * y[i];
 	}
 	return result;
-}
-
-// Managed memory is host-accessible, so tests can fill/read x and y directly
-// without any explicit copy.
-void allocManaged(int N, float **x, float **y)
-{
-	CUDA_CHECK(cudaMallocManaged(x, N * sizeof(float)));
-	CUDA_CHECK(cudaMallocManaged(y, N * sizeof(float)));
 }
 
 void fillRandom(int N, float *x, float *y, unsigned seed)
@@ -48,63 +40,48 @@ void expectClose(float expected, float actual)
 
 TEST(DotProduct, ZeroElements)
 {
-	float *x, *y;
-	allocManaged(1, &x, &y);
+	CudaManagedArray<float> x(1);
+	CudaManagedArray<float> y(1);
 
-	EXPECT_FLOAT_EQ(dotProductGPU(0, x, y), 0.f);
-
-	CUDA_CHECK(cudaFree(x));
-	CUDA_CHECK(cudaFree(y));
+	EXPECT_FLOAT_EQ(dotProductGPU(0, x.get(), y.get()), 0.f);
 }
 
 TEST(DotProduct, SingleElement)
 {
-	float *x, *y;
-	allocManaged(1, &x, &y);
+	CudaManagedArray<float> x(1);
+	CudaManagedArray<float> y(1);
 	x[0] = 3.f;
 	y[0] = 5.f;
 
-	expectClose(15.f, dotProductGPU(1, x, y));
-
-	CUDA_CHECK(cudaFree(x));
-	CUDA_CHECK(cudaFree(y));
+	expectClose(15.f, dotProductGPU(1, x.get(), y.get()));
 }
 
 TEST(DotProduct, FewerElementsThanThreadsPerBlock)
 {
 	int N = 50; // < THREADS_PER_BLOCK (128)
-	float *x, *y;
-	allocManaged(N, &x, &y);
-	fillRandom(N, x, y, 42);
+	CudaManagedArray<float> x(N);
+	CudaManagedArray<float> y(N);
+	fillRandom(N, x.get(), y.get(), 42);
 
-	expectClose(dotProductCPU(N, x, y), dotProductGPU(N, x, y));
-
-	CUDA_CHECK(cudaFree(x));
-	CUDA_CHECK(cudaFree(y));
+	expectClose(dotProductCPU(N, x.get(), y.get()), dotProductGPU(N, x.get(), y.get()));
 }
 
 TEST(DotProduct, ElementCountNotMultipleOfGridStride)
 {
 	int N = 100003; // deliberately not a multiple of THREADS_PER_BLOCK * NUM_BLOCKS
-	float *x, *y;
-	allocManaged(N, &x, &y);
-	fillRandom(N, x, y, 7);
+	CudaManagedArray<float> x(N);
+	CudaManagedArray<float> y(N);
+	fillRandom(N, x.get(), y.get(), 7);
 
-	expectClose(dotProductCPU(N, x, y), dotProductGPU(N, x, y));
-
-	CUDA_CHECK(cudaFree(x));
-	CUDA_CHECK(cudaFree(y));
+	expectClose(dotProductCPU(N, x.get(), y.get()), dotProductGPU(N, x.get(), y.get()));
 }
 
 TEST(DotProduct, LargeRandomInput)
 {
 	int N = 1 << 20;
-	float *x, *y;
-	allocManaged(N, &x, &y);
-	fillRandom(N, x, y, 123);
+	CudaManagedArray<float> x(N);
+	CudaManagedArray<float> y(N);
+	fillRandom(N, x.get(), y.get(), 123);
 
-	expectClose(dotProductCPU(N, x, y), dotProductGPU(N, x, y));
-
-	CUDA_CHECK(cudaFree(x));
-	CUDA_CHECK(cudaFree(y));
+	expectClose(dotProductCPU(N, x.get(), y.get()), dotProductGPU(N, x.get(), y.get()));
 }
