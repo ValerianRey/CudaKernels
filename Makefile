@@ -15,7 +15,7 @@ GTEST_MAIN_LIB := $(BUILD_DIR)/libgtest_main.a
 
 all: demo bench test
 
-demo: $(BUILD_DIR)/dot_product_demo $(BUILD_DIR)/add_vector_demo
+demo: $(BUILD_DIR)/dot_product_demo $(BUILD_DIR)/add_vector_demo $(BUILD_DIR)/matrix_product_demo
 bench: $(BUILD_DIR)/dot_product_bench
 
 $(BUILD_DIR):
@@ -41,6 +41,17 @@ $(BUILD_DIR)/add_vector_main.o: $(SRC_DIR)/add_vector_main.cu $(SRC_DIR)/add_vec
 	$(NVCC) $(CXXSTD) $(INCLUDES) -c $< -o $@
 
 $(BUILD_DIR)/add_vector_demo: $(BUILD_DIR)/add_vector.o $(BUILD_DIR)/add_vector_main.o
+	$(NVCC) $(CXXSTD) $^ -o $@
+
+# --- matrix product library, shared by the demo and the tests ---
+
+$(BUILD_DIR)/matrix_product.o: $(SRC_DIR)/matrix_product.cu $(SRC_DIR)/matrix_product.cuh $(SRC_DIR)/cuda_check.cuh | $(BUILD_DIR)
+	$(NVCC) $(CXXSTD) $(INCLUDES) -c $< -o $@
+
+$(BUILD_DIR)/matrix_product_main.o: $(SRC_DIR)/matrix_product_main.cu $(SRC_DIR)/matrix_product.cuh $(SRC_DIR)/cuda_check.cuh | $(BUILD_DIR)
+	$(NVCC) $(CXXSTD) $(INCLUDES) -c $< -o $@
+
+$(BUILD_DIR)/matrix_product_demo: $(BUILD_DIR)/matrix_product.o $(BUILD_DIR)/matrix_product_main.o
 	$(NVCC) $(CXXSTD) $^ -o $@
 
 # --- benchmark ---
@@ -82,9 +93,16 @@ $(BUILD_DIR)/add_vector_test.o: tests/add_vector_test.cu $(SRC_DIR)/add_vector.c
 $(BUILD_DIR)/add_vector_test: $(BUILD_DIR)/add_vector.o $(BUILD_DIR)/add_vector_test.o $(GTEST_LIB) $(GTEST_MAIN_LIB)
 	$(NVCC) $(CXXSTD) $^ -lpthread -o $@
 
-test: $(BUILD_DIR)/dot_product_test $(BUILD_DIR)/add_vector_test
+$(BUILD_DIR)/matrix_product_test.o: tests/matrix_product_test.cu $(SRC_DIR)/matrix_product.cuh $(SRC_DIR)/cuda_check.cuh | $(BUILD_DIR) $(GTEST_REPO_DIR)
+	$(NVCC) $(CXXSTD) $(INCLUDES) -I $(GTEST_INCLUDE) -c $< -o $@
+
+$(BUILD_DIR)/matrix_product_test: $(BUILD_DIR)/matrix_product.o $(BUILD_DIR)/matrix_product_test.o $(GTEST_LIB) $(GTEST_MAIN_LIB)
+	$(NVCC) $(CXXSTD) $^ -lpthread -o $@
+
+test: $(BUILD_DIR)/dot_product_test $(BUILD_DIR)/add_vector_test $(BUILD_DIR)/matrix_product_test
 	./$(BUILD_DIR)/dot_product_test
 	./$(BUILD_DIR)/add_vector_test
+	./$(BUILD_DIR)/matrix_product_test
 
 clean:
 	rm -rf $(BUILD_DIR)
