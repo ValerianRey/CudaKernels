@@ -16,24 +16,28 @@ add_library(cuda_kernels STATIC
 	src/add_vector.cu
 	src/dot_product.cu
 	src/matrix_product.cu
+	src/gemm.cu
 )
 target_include_directories(cuda_kernels PUBLIC src)
 
 # --- demos ---
 
-foreach(kernel add_vector dot_product matrix_product)
+foreach(kernel add_vector dot_product matrix_product gemm)
 	add_executable(${kernel}_demo src/${kernel}_main.cu)
 	target_link_libraries(${kernel}_demo PRIVATE cuda_kernels)
 endforeach()
 
-add_custom_target(demo DEPENDS add_vector_demo dot_product_demo matrix_product_demo)
+add_custom_target(demo DEPENDS add_vector_demo dot_product_demo matrix_product_demo gemm_demo)
 
-# --- benchmark ---
+# --- benchmarks ---
 
 add_executable(dot_product_bench benchmarks/dot_product_bench.cu)
 target_link_libraries(dot_product_bench PRIVATE cuda_kernels)
 
-add_custom_target(bench DEPENDS dot_product_bench)
+add_executable(gemm_bench benchmarks/gemm_bench.cu)
+target_link_libraries(gemm_bench PRIVATE cuda_kernels)
+
+add_custom_target(bench DEPENDS dot_product_bench gemm_bench)
 
 # --- tests (GoogleTest is fetched automatically on first configure) ---
 
@@ -48,7 +52,7 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-foreach(kernel add_vector dot_product matrix_product)
+foreach(kernel add_vector dot_product matrix_product gemm)
 	add_executable(${kernel}_test tests/${kernel}_test.cu)
 	target_link_libraries(${kernel}_test PRIVATE cuda_kernels gtest_main)
 	add_test(NAME ${kernel} COMMAND ${kernel}_test)
