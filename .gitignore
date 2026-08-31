@@ -7,3 +7,5 @@
 *.nsys-rep
 *.sqlite
 /build/
+/build-debug/
+/.vscode/

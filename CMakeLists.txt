@@ -51,6 +51,9 @@ target_include_directories(cuda_kernels PRIVATE ${cutlass_SOURCE_DIR}/include)
 # CUTLASS headers use standard-library constexpr helpers from host/device
 # functions (e.g. std::get on cutlass::Coord), which needs this relaxation.
 target_compile_options(cuda_kernels PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+# -G gives full device-side debug info for cuda-gdb (breakpoints/stepping in
+# kernels) but disables device-code optimizations, so only enable it in Debug.
+target_compile_options(cuda_kernels PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:$<$<CONFIG:Debug>:-G>>)
 
 # --- demos ---
 
