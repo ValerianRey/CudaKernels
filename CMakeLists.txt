@@ -54,6 +54,9 @@ target_compile_options(cuda_kernels PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--expt-re
 # -G gives full device-side debug info for cuda-gdb (breakpoints/stepping in
 # kernels) but disables device-code optimizations, so only enable it in Debug.
 target_compile_options(cuda_kernels PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:$<$<CONFIG:Debug>:-G>>)
+# -lineinfo maps profiler samples (Nsight Systems/Compute) back to source
+# lines without disabling optimizations, so keep it on outside of Debug.
+target_compile_options(cuda_kernels PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:$<$<NOT:$<CONFIG:Debug>>:-lineinfo>>)
 
 # --- demos ---
 
@@ -75,7 +78,10 @@ target_link_libraries(gemm_bench PRIVATE cuda_kernels)
 add_executable(gemm_cutlass_bench benchmarks/gemm_cutlass_bench.cu)
 target_link_libraries(gemm_cutlass_bench PRIVATE cuda_kernels)
 
-add_custom_target(bench DEPENDS dot_product_bench gemm_bench gemm_cutlass_bench)
+add_executable(softmax_bench benchmarks/softmax_bench.cu)
+target_link_libraries(softmax_bench PRIVATE cuda_kernels)
+
+add_custom_target(bench DEPENDS dot_product_bench gemm_bench gemm_cutlass_bench softmax_bench)
 
 # --- tests ---
 
