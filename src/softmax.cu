@@ -19,10 +19,10 @@ __global__ void sum_exp_reduction_tree(int N, float* input, float* buf) {
     }
 
     for (int stride = BLOCK_SIZE >> 1; stride > 0; stride >>= 1) {
+        __syncthreads();
         if (x < stride) {
             block_buf[x] += block_buf[x + stride];
         }
-        __syncthreads();
     }
     __syncthreads();
     buf[blockIdx.x] = block_buf[0];
@@ -52,7 +52,7 @@ void softmax_(int N, float* input) {
         buf_sum += buf[i];
     }
 
-    float denom_inv = 1 / buf_sum;
+    float denom_inv = 1.F / buf_sum;
 
     inplace_softmax<<<num_blocks, BLOCK_SIZE>>>(N, input, denom_inv);
 
