@@ -25,7 +25,9 @@ __global__ void sum_exp_reduction_tree(int N, float* input, float* buf) {
         }
     }
     __syncthreads();
-    buf[blockIdx.x] = block_buf[0];
+    if (x == 0) {
+        buf[blockIdx.x] = block_buf[0];
+    }
 }
 
 __global__ void inplace_softmax(int N, float* input, float denom_inv) {
