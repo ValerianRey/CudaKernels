@@ -19,15 +19,22 @@ __global__ void sum_exp_reduction_tree(int N, float* input, float* denom) {
         block_buf[x] = 0.F;
     }
 
-    for (int stride = BLOCK_SIZE >> 1; stride > 0; stride >>= 1) {
+    for (int stride = BLOCK_SIZE >> 1; stride >= 32; stride >>= 1) {
         __syncthreads();
         if (x < stride) {
             block_buf[x] += block_buf[x + stride];
         }
     }
     __syncthreads();
-    if (x == 0) {
-        atomicAdd(denom, block_buf[0]);
+
+    if (x < 32) {
+        float val = block_buf[x];
+        for (int stride = 16; stride > 0; stride >>= 1) {
+            val += __shfl_down_sync(0xffffffff, val, stride);
+        }
+        if (x == 0) {
+            atomicAdd(denom, val);
+        }
     }
 }
 
