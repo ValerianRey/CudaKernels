@@ -69,14 +69,23 @@ __global__ void max_reduction_kernel(int N, T* input, T* out) {
         buffer[x] = *out;
     }
 
-    for (int offset = BLOCK_SIZE / 2; offset > 0; offset >>= 1) {
+    for (int offset = BLOCK_SIZE / 2; offset >= 32; offset >>= 1) {
         __syncthreads();
         if (x < offset) {
             buffer[x] = max(buffer[x], buffer[x + offset]);
         }
     }
     __syncthreads();
-    atomicMax(out, buffer[0]);
+
+    if (x < 32) {
+        T result = buffer[x];
+        for (int offset = 16; offset > 0; offset >>= 1) {
+            result = max(result, __shfl_down_sync(0xffffffff, result, offset));
+        }
+        if (x == 0) {
+            atomicMax(out, result);
+        }
+    }
 }
 
 
