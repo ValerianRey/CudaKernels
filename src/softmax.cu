@@ -40,7 +40,9 @@ __global__ void sum_exp_reduction_tree(int N, float* input, float* denom) {
 
 __global__ void inplace_softmax(int N, float* input, const float* denom) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    input[i] = input[i] / *denom;
+    if (i < N) {
+        input[i] = input[i] / *denom;
+    }
 }
 
 void softmax_(int N, float* input) {
