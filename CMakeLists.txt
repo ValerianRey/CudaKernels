@@ -54,6 +54,7 @@ set(KERNELS
 	reductions
 	dot_product_v2
 	histogram
+	transpose
 )
 
 set(KERNELS_WITH_DEMO
