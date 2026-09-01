@@ -7,6 +7,7 @@
 
 template <typename T>
 __global__ void transpose_kernel(T* input, T* output, int rows, int cols) {
+    // Add 1 extra column to shared_arr to avoid bank conflict when reading from it
     __shared__ T shared_arr[BLOCK_SIZE][BLOCK_SIZE + 1];
     
     const int input_col = blockIdx.x * blockDim.x + threadIdx.x;
