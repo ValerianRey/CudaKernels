@@ -45,6 +45,7 @@ add_library(cuda_kernels STATIC
 	src/gemm.cu
 	src/gemm_cutlass.cu
 	src/softmax.cu
+	src/reductions.cuh
 )
 target_include_directories(cuda_kernels PUBLIC src)
 target_include_directories(cuda_kernels PRIVATE ${cutlass_SOURCE_DIR}/include)
@@ -87,7 +88,7 @@ add_custom_target(bench DEPENDS dot_product_bench gemm_bench gemm_cutlass_bench 
 
 enable_testing()
 
-foreach(kernel add_vector dot_product matrix_product gemm gemm_cutlass softmax)
+foreach(kernel add_vector dot_product matrix_product gemm gemm_cutlass softmax reductions)
 	add_executable(${kernel}_test tests/${kernel}_test.cu)
 	target_link_libraries(${kernel}_test PRIVATE cuda_kernels gtest_main)
 	add_test(NAME ${kernel} COMMAND ${kernel}_test)
