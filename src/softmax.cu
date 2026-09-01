@@ -13,7 +13,8 @@ __global__ void sum_exp_reduction_tree(int N, float* input, float* buf) {
     
     __shared__ float block_buf[BLOCK_SIZE];
     if (x + b < N) {
-        block_buf[x] = exp(input[b + x]);
+        input[b + x] = exp(input[b + x]);
+        block_buf[x] = input[b + x];
     } else {
         block_buf[x] = 0.F;
     }
@@ -32,7 +33,7 @@ __global__ void sum_exp_reduction_tree(int N, float* input, float* buf) {
 
 __global__ void inplace_softmax(int N, float* input, float denom_inv) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    input[i] = exp(input[i]) * denom_inv;
+    input[i] = input[i] * denom_inv;
 }
 
 void softmax_(int N, float* input) {
