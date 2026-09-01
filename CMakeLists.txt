@@ -36,18 +36,52 @@ FetchContent_Declare(
 set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
+# --- kernel registry ---
+# List a kernel's name once, here, to build it into the library and get
+# tests/<kernel>_test.cu picked up as a test. Its source must be
+# src/<kernel>.cu, or src/<kernel>.cuh for a header-only template kernel.
+# Additionally list it under KERNELS_WITH_DEMO or KERNELS_WITH_BENCH to also
+# build src/<kernel>_main.cu as a demo or benchmarks/<kernel>_bench.cu as a
+# benchmark.
+
+set(KERNELS
+	add_vector
+	dot_product
+	matrix_product
+	gemm
+	gemm_cutlass
+	softmax
+	reductions
+	dot_product_v2
+)
+
+set(KERNELS_WITH_DEMO
+	add_vector
+	dot_product
+	matrix_product
+	gemm
+	gemm_cutlass
+)
+
+set(KERNELS_WITH_BENCH
+	dot_product
+	gemm
+	gemm_cutlass
+	softmax
+)
+
 # --- kernel library, shared by every demo, benchmark and test ---
 
-add_library(cuda_kernels STATIC
-	src/add_vector.cu
-	src/dot_product.cu
-	src/matrix_product.cu
-	src/gemm.cu
-	src/gemm_cutlass.cu
-	src/softmax.cu
-	src/reductions.cuh
-	src/dot_product_v2.cuh
-)
+set(KERNEL_SOURCES)
+foreach(kernel ${KERNELS})
+	if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/${kernel}.cu)
+		list(APPEND KERNEL_SOURCES src/${kernel}.cu)
+	else()
+		list(APPEND KERNEL_SOURCES src/${kernel}.cuh)
+	endif()
+endforeach()
+
+add_library(cuda_kernels STATIC ${KERNEL_SOURCES})
 target_include_directories(cuda_kernels PUBLIC src)
 target_include_directories(cuda_kernels PRIVATE ${cutlass_SOURCE_DIR}/include)
 # PUBLIC: several kernels (e.g. reductions.cuh, dot_product_v2.cuh) are
@@ -67,34 +101,29 @@ target_compile_options(cuda_kernels PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:$<$<NOT:$<
 
 # --- demos ---
 
-foreach(kernel add_vector dot_product matrix_product gemm gemm_cutlass)
+foreach(kernel ${KERNELS_WITH_DEMO})
 	add_executable(${kernel}_demo src/${kernel}_main.cu)
 	target_link_libraries(${kernel}_demo PRIVATE cuda_kernels)
 endforeach()
 
-add_custom_target(demo DEPENDS add_vector_demo dot_product_demo matrix_product_demo gemm_demo gemm_cutlass_demo)
+list(TRANSFORM KERNELS_WITH_DEMO APPEND "_demo" OUTPUT_VARIABLE DEMO_TARGETS)
+add_custom_target(demo DEPENDS ${DEMO_TARGETS})
 
 # --- benchmarks ---
 
-add_executable(dot_product_bench benchmarks/dot_product_bench.cu)
-target_link_libraries(dot_product_bench PRIVATE cuda_kernels)
+foreach(kernel ${KERNELS_WITH_BENCH})
+	add_executable(${kernel}_bench benchmarks/${kernel}_bench.cu)
+	target_link_libraries(${kernel}_bench PRIVATE cuda_kernels)
+endforeach()
 
-add_executable(gemm_bench benchmarks/gemm_bench.cu)
-target_link_libraries(gemm_bench PRIVATE cuda_kernels)
-
-add_executable(gemm_cutlass_bench benchmarks/gemm_cutlass_bench.cu)
-target_link_libraries(gemm_cutlass_bench PRIVATE cuda_kernels)
-
-add_executable(softmax_bench benchmarks/softmax_bench.cu)
-target_link_libraries(softmax_bench PRIVATE cuda_kernels)
-
-add_custom_target(bench DEPENDS dot_product_bench gemm_bench gemm_cutlass_bench softmax_bench)
+list(TRANSFORM KERNELS_WITH_BENCH APPEND "_bench" OUTPUT_VARIABLE BENCH_TARGETS)
+add_custom_target(bench DEPENDS ${BENCH_TARGETS})
 
 # --- tests ---
 
 enable_testing()
 
-foreach(kernel add_vector dot_product matrix_product gemm gemm_cutlass softmax reductions dot_product_v2)
+foreach(kernel ${KERNELS})
 	add_executable(${kernel}_test tests/${kernel}_test.cu)
 	target_link_libraries(${kernel}_test PRIVATE cuda_kernels gtest_main)
 	add_test(NAME ${kernel} COMMAND ${kernel}_test)
