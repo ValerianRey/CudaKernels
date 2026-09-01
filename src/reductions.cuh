@@ -89,9 +89,9 @@ T max_reduction(int N, T* input) {
 
     int num_blocks = N == 0? 1 : (N + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
-    max_reduction_kernel<<<num_blocks, BLOCK_SIZE>>>(N, input, out);
+    max_reduction_kernel<<<num_blocks, BLOCK_SIZE, /*dynamic shared mem per block=*/0, /*stream=*/0>>>(N, input, out);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    CUDA_CHECK(cudaStreamSynchronize(0));
 
     T result = *out;
     CUDA_CHECK(cudaFree(out));
