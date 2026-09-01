@@ -53,6 +53,7 @@ set(KERNELS
 	softmax
 	reductions
 	dot_product_v2
+	histogram
 )
 
 set(KERNELS_WITH_DEMO
