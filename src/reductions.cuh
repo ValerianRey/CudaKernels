@@ -7,7 +7,7 @@
 #define BLOCK_SIZE ((256))
 
 template <typename T>
-__global__ void sum_kernel(int N, T* input, T* out) {
+__global__ void sum_reduction_kernel(int N, T* input, T* out) {
     int x = threadIdx.x;
     int b = blockIdx.x * blockDim.x;
 
@@ -41,12 +41,55 @@ __global__ void sum_kernel(int N, T* input, T* out) {
 
 
 template <typename T>
-T sum(int N, T* input) {
+T sum_reduction(int N, T* input) {
     T* out = nullptr;
     CUDA_CHECK(cudaMallocManaged(&out, sizeof(T)));
     *out = (T) 0;
     int num_blocks = N > 0 ? (N + BLOCK_SIZE - 1) / BLOCK_SIZE : 1;
-    sum_kernel<<<num_blocks, BLOCK_SIZE>>>(N, input, out);
+    sum_reduction_kernel<<<num_blocks, BLOCK_SIZE>>>(N, input, out);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    T result = *out;
+    CUDA_CHECK(cudaFree(out));
+    return result;
+}
+
+
+template <typename T>
+__global__ void max_reduction_kernel(int N, T* input, T* out) {
+    int x = threadIdx.x;
+    int b = blockIdx.x * blockDim.x;
+    
+    __shared__ T buffer[BLOCK_SIZE];
+
+    if (x + b < N) {
+        buffer[x] = input[x + b];
+    } else {
+        buffer[x] = *out;
+    }
+
+    for (int offset = BLOCK_SIZE / 2; offset > 0; offset >>= 1) {
+        __syncthreads();
+        if (x < offset) {
+            buffer[x] = max(buffer[x], buffer[x + offset]);
+        }
+    }
+    __syncthreads();
+    atomicMax(out, buffer[0]);
+}
+
+
+
+template <typename T>
+T max_reduction(int N, T* input) {
+    T* out = nullptr;
+    CUDA_CHECK(cudaMallocManaged(&out, sizeof(T)));
+    *out = std::numeric_limits<T>::lowest();
+
+    int num_blocks = N == 0? 1 : (N + BLOCK_SIZE - 1) / BLOCK_SIZE;
+
+    max_reduction_kernel<<<num_blocks, BLOCK_SIZE>>>(N, input, out);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
