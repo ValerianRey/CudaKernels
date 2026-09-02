@@ -56,6 +56,7 @@ set(KERNELS
 	histogram
 	transpose
 	softmax_2d
+	layer_norm
 )
 
 set(KERNELS_WITH_DEMO
