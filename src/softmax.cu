@@ -60,13 +60,15 @@ void softmax_(int N, float* input) {
     *denom = 0.F;
 
     int num_blocks = (N + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    dim3 grid_dim(num_blocks, 1, 1);
+    dim3 block_dim(BLOCK_SIZE, 1, 1);
 
-    sum_exp<<<num_blocks, BLOCK_SIZE, 0, 0>>>(N, input, denom);
+    sum_exp<<<grid_dim, block_dim, 0, 0>>>(N, input, denom);
 
     cudaGetLastError();
     cudaStreamSynchronize(0);
 
-    divide_pointwise<<<num_blocks, BLOCK_SIZE, 0, 0>>>(N, input, *denom);
+    divide_pointwise<<<grid_dim, block_dim, 0, 0>>>(N, input, *denom);
 
     cudaGetLastError();
     cudaStreamSynchronize(0);
