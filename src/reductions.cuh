@@ -79,7 +79,7 @@ __global__ void max_reduction_kernel(int N, T* input, T* out) {
             buffer[x] = max(buffer[x], buffer[x + offset]);
         }
     }
-    __syncthreads();
+    __syncwarp();
 
     if (x < 32) {
         T result = buffer[x];
