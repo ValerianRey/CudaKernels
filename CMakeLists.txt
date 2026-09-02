@@ -55,6 +55,7 @@ set(KERNELS
 	dot_product_v2
 	histogram
 	transpose
+	softmax_2d
 )
 
 set(KERNELS_WITH_DEMO
